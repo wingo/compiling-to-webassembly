@@ -20,4 +20,4 @@
 
      (i32.const 1)))
 
- (export "func" (func $fac)))
+ (export "fac" (func $fac)))

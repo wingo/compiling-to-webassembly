@@ -1,0 +1,67 @@
+<b id="fac-status">loading fac...</b>
+<div id="fac-log">
+</div>
+<form id="fac-form" hidden="1">
+  <label id="fac-prompt" for="entry">&gt;&nbsp;</label>
+  <input type="text" id="fac-entry" name="entry"
+         placeholder="malloc(40)"
+         size="40" />
+</form>
+<script type='text/javascript'>
+//<![CDATA[
+  function activate_fac_demo() {
+    let escape = str => {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    };
+    let $ = document.getElementById.bind(document);
+    let addLog = (container, html) => {
+      let e = document.createElement(container);
+      e.innerHTML = html
+      $('fac-log').appendChild(e);
+    };
+    let defCount = 0;
+    let ignoredDefinitions = new Set();
+    $('fac-status').innerHTML = "live fac demo";
+    $('fac-form').hidden = false;
+    let evalAndPrint = expr => {
+      addLog('pre', escape('> ' + expr));
+      let eval_ = eval;
+      let result, success = false;
+      try {
+        result = eval_(expr);
+        success = true;
+        if (typeof result !== 'undefined' && typeof result !== 'null') {
+          let repr;
+          let def = '$' + defCount++;
+          window[def] = result;
+          addLog('pre', def + ' = ' + escape(''+result));
+        }
+      } catch (e) {
+        addLog('pre', escape(e.toString()));
+      }
+    }
+    evalAndPrint(`fac(0)`);
+    evalAndPrint(`fac(1)`);
+    evalAndPrint(`fac(2)`);
+    evalAndPrint(`fac(3)`);
+    $('fac-form').onsubmit = event => {
+      let entry = $('fac-entry');
+      let expr = entry.value;
+      entry.value = '';
+      evalAndPrint(expr);
+      event.preventDefault();
+    };
+  };
+  async function load_fac_demo() {
+    let response = await fetch("fac.wasm", {credentials:"same-origin"});
+    if (!response.ok) throw new Error("failed to load fac.wasm");
+    let bytes = await response.arrayBuffer();
+    let mod = new WebAssembly.Module(bytes);
+    let instance = new WebAssembly.Instance(mod);
+    let {fac} = instance.exports;
+    window.fac = fac;
+    activate_fac_demo()
+  }
+  load_fac_demo();
+//]]>
+</script>
