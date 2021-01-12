@@ -1,0 +1,98 @@
+(use-modules (ice-9 match)
+             (ice-9 binary-ports)
+             (srfi srfi-1)
+             (ice-9 pretty-print))
+
+(define (compile-program defs)
+  (define types '())
+  (define funcs '())
+  (define exports '())
+
+  (define (intern-type! params results)
+    (define type `(type (param ,@params)
+                        (results ,@results)))
+    (match (member type types)
+      ((_ . tail) (length tail))
+      (#f
+       (let ((idx (length types)))
+         (set! types (cons type types))
+         idx))))
+
+  (define (arg-type _) 'i32)
+
+  (define (lookup-func name)
+    (match funcs
+      ((('func name* . _) . funcs)
+       (if (eq? name name*)
+           (length funcs)
+           '()))))
+
+  (define (add-func! name typeidx body)
+    (set! funcs (cons `(func ,name ,typeidx ,body) funcs)))
+
+  (define (add-export! name id)
+    (set! exports (cons `(export ,name (func ,(lookup-func id))) exports)))
+
+  (define (compile-def def)
+    (define (args->env args) (reverse args))
+    (match def
+      (('define (f arg ...) exp)
+       (add-func! f (intern-type! (map arg-type arg) '(i32))
+                  (lambda () (compile-exp exp (args->env arg))))
+       (add-export! (symbol->string f) f))))
+
+  (define (compile-func func)
+    (match func
+      (('func name type compile-body)
+       `(func ,type ,@(compile-body)))))
+
+  (define (compile-exp exp env)
+    (let compile ((exp exp))
+      (match exp
+        ((? symbol? id)
+         (match (memq id env)
+           ((_ . tail) `((local.get ,(length tail))))))
+        ((? exact-integer? n)
+         `((i32.const ,n)))
+        (('if test then else)
+         `((block (type ,(intern-type! '() '(i32)))
+                  (block (type ,(intern-type! '() '()))
+                         ,@(compile test)
+                         (br_if 0)
+                         ,@(compile else)
+                         (br 1))
+                  ,@(compile then))))
+        (('zero? exp)
+         `(,@(compile exp)
+           (i32.eqz)))
+        (('- a b)
+         `(,@(compile a)
+           ,@(compile b)
+           (i32.sub)))
+        (('* a b)
+         `(,@(compile a)
+           ,@(compile b)
+           (i32.mul)))
+        ((f arg ...)
+         (let ((idx (lookup-func f)))
+           `(,@(append-map compile arg)
+             (call ,idx)))))))
+
+  (for-each compile-def defs)
+
+  (let ((funcs (map compile-func funcs)))
+    `(module ,@types ,@funcs ,@exports)))
+
+(when (batch-mode?)
+  (match (command-line)
+    ((_ in out)
+     (let ((defs (call-with-input-file in
+                   (lambda (port)
+                     (let lp ()
+                       (match (read port)
+                         ((? eof-object?) '())
+                         (def (cons def (lp)))))))))
+       (pretty-print (compile-program defs))))
+    ((prog . _)
+     (format (current-error-port) "usage: ~a in.scm out.wasm\n" prog)
+     (exit 1))))
