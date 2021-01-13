@@ -28,7 +28,7 @@
       ((('func name* . _) . funcs)
        (if (eq? name name*)
            (length funcs)
-           '()))))
+           (lp funcs)))))
 
   (define (add-func! name typeidx body)
     (set! funcs (cons `(func ,name ,typeidx ,body) funcs)))

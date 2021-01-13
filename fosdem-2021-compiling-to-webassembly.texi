@@ -1,0 +1,158 @@
+\input texinfo
+@c run with texi-to-pdf-presetation foo.texi foo.pdf
+@c -*- mode: texinfo; coding: utf-8 -*-
+@documentencoding UTF-8
+@settitle Compiling to WebAssembly
+@c +html-scale: 1/4
+@c +image-uri-base: https://wingolog.org/pub/fosdem-2021-images/
+@c +background: background.svg
+@c +font-family: Georgia
+@c +pre text-height: 32
+@c +width: 1920
+@c +height: 1080
+@c +margin-left: 700
+@c +margin-top: 96
+@c +margin-right: 128
+@c +indent-width: 96
+@c +text-scaling: 3/2
+@c +header absolute?: #t
+@c +header margin-top: 72
+@c +header margin-left: 128
+@c +header margin-right: 1500
+@iftex
+@paragraphindent 0
+@end iftex
+
+@titlepage 
+@title Compiling to WebAssembly
+@subtitle
+@subtitle FOSDEM 2021
+@author Andy Wingo | @email{wingo@@igalia.com}
+@author @code{wingolog.org} | @code{@@andywingo}
+@end titlepage
+
+@section agenda
+
+A hands-on intro
+
+A tiny Scheme compiler
+
+Missing pieces
+
+Pandora's box of unanswerables
+
+supporting materials:
+
+@url{https://github.com/wingo/compiling-to-webassembly}
+
+@section diving right in
+
+Sample program: recursive @code{fac}
+
+@example
+(define (fac n)
+  (if (zero? n)
+      1
+      (* n (fac (- n 1)))))
+@end example
+
+@section desired wasm
+
+@url{https://webassembly.github.io/spec/core}
+
+@code{type}, @code{func}, @code{table}, @code{memory}, @code{global},
+@code{import}, @code{export}, @code{start}, @code{elem}, @code{data}
+
+@example
+(module
+ (type ...) ...
+ (func ...) ...
+ (export ...) ...)
+@end example
+
+@section testing wasm
+
+Assemble using @code{wat2wasm}: @url{https://github.com/WebAssembly/wabt}
+
+Test in browser
+
+@section simple compiler
+
+@section filling in the gaps
+
+Closures: @url{https://github.com/WebAssembly/function-references};
+or closure conversion
+
+Tail calls: @url{https://github.com/WebAssembly/tail-calls}, but
+lagging implementations; sadness
+
+Varargs: Shadow arg stack??
+
+Threads: @url{https://github.com/WebAssembly/threads}; web workers
+
+Dynamic linking: Sadness
+
+@section filling in the gaps
+
+Exceptions / non-local control flow: @url{https://github.com/WebAssembly/exception-handling}
+
+Coroutines: Possible extension of @code{exception-handling}; or CPS
+conversion
+
+GC: It's complicated
+
+@section gc, take one
+
+One approach: @code{i32} as value type, tagging, linear memory GC
+@itemize
+@item Bad js interop
+@item No access to stack roots
+@item Web browsers already have excellent GC
+@item Uncollectable cycles with JS
+@end itemize
+
+@section gc, take two
+
+@url{https://github.com/WebAssembly/reference-types}
+
+Reference types: everything is an @code{externref}
+@itemize
+@item Have to call run-time (JS) to allocate, access data
+@item Not so bad???
+@end itemize
+
+Take three: GC-managed records and arrays in WebAssembly?
+@url{https://github.com/WebAssembly/gc}
+
+Related to decision on closures (typed function references)
+
+@section host integration
+
+Call JS; be called by JS; how do data types cross the boundaries?
+
+What do you do for strings?  Linear memory, or JS strings?
+
+DOM access -- expose WebGL to your language?
+
+@section further questions
+
+Compile your source programs, or ship an interpreter?
+
+How much JS to use?  (Should I just target JS?)
+
+Use LLVM?  Binaryen?  Emscripten?
+
+Fork or extend host language?
+
+@section questions
+
+@uref{https://wingolog.org/}
+
+@code{@@andywingo}
+
+@code{wingo@@igalia.com}
+
+Happy hacking!
+
+
+@bye
